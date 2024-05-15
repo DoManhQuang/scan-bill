@@ -163,3 +163,5 @@ dataset
 *.zip
 runs
 *.pt
+weights
+flagged
