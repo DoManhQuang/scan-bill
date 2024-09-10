@@ -1,0 +1,12 @@
+OTHER
+dest_acc_code
+dest_acc_name
+dest_bank_name
+source_acc_code
+source_acc_name
+transaction_code
+transaction_content
+transaction_cost
+transaction_form
+transaction_money
+transaction_time
