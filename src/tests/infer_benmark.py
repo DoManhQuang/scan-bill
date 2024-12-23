@@ -10,6 +10,7 @@ from paddleocr.ppocr.utils.utility import get_image_file_list, check_and_read
 from paddleocr.ppocr.utils.logging import get_logger
 import time
 from utils.engine import ultra_model_load
+from ultralytics import YOLO
 
 
 ROOT = os.getcwd()
@@ -80,28 +81,45 @@ def kie_ser_prediction(args, ser_systems, keypoint_infer, save=True, draw=False)
     return ser_res, total_time
 
 
-serargs = parse_args()
-serargs.kie_algorithm="LayoutXLM"
-serargs.vis_font_path="/work/quang.domanh/ppocr/ppocr-vietnamese/paddleocr/inference/gpkd_weights/RobotoSlab-Light.ttf"
-serargs.use_gpu=False
-serargs.ser_model_dir="/work/quang.domanh/scan-bill/src/weights/kie/invoices/ser_layoutxlm_invoices_fold1"
-serargs.ser_dict_path="/work/quang.domanh/scan-bill/src/assets/invoices_classes.txt"
-serargs.ocr_order_method="tb-yx"
-serargs.use_angle_cls="/work/quang.domanh/scan-bill/src/weights/ocr/cls/ch_ppocr_mobile_v2.0_cls_infer"
-serargs.det_model_dir="/work/quang.domanh/scan-bill/src/weights/ocr/det/ch/ch_PP-OCRv4_det_infer"
-serargs.rec_model_dir="/work/quang.domanh/scan-bill/src/weights/ocr/rec/ch/ch_PP-OCRv4_rec_infer"
-serargs.image_dir="/work/quang.domanh/datasets/test_benmark_invoices"
+models_list_yolo = [
+    "yolo11m-pose.pt", "yolo11n-pose.pt", "yolo11s-pose.pt", 
+    "yolov8m-pose.pt", "yolov8n-pose.pt", "yolov8s-pose.pt"
+]
+model_list_layout = [
+    "ser_layoutxlm_invoices_fold1",
+    "ser_vi_layoutxlm_invoices_fold3"
+]
+save_dir_model = "/work/quang.domanh/scan-bill/runs/keydet"
+with open("results-performance-test.txt", "w") as f:
+    f.write(">>> START <<< \n")
 
-ser_predictor = SerPredictor(serargs)
-print("load model  ser layoutxlm done!")
-bill_keypts_infer = ultra_model_load(weights_path="/work/quang.domanh/scan-bill/src/weights/yolo/bill-yolov8s-pose-best.pt")
-print("load model  bill_keypts_infer done!")
+for model_layout in model_list_layout:
+    serargs = parse_args()
+    serargs.kie_algorithm="LayoutXLM"
+    serargs.vis_font_path="/work/quang.domanh/ppocr/ppocr-vietnamese/paddleocr/inference/gpkd_weights/RobotoSlab-Light.ttf"
+    serargs.use_gpu=True
+    serargs.ser_model_dir=f"/work/quang.domanh/scan-bill/src/weights/kie/invoices/{model_layout}"
+    serargs.ser_dict_path="/work/quang.domanh/scan-bill/src/assets/invoices_classes.txt"
+    serargs.ocr_order_method="tb-yx"
+    serargs.use_angle_cls="/work/quang.domanh/scan-bill/src/weights/ocr/cls/ch_ppocr_mobile_v2.0_cls_infer"
+    serargs.det_model_dir="/work/quang.domanh/scan-bill/src/weights/ocr/det/ch/ch_PP-OCRv4_det_infer"
+    serargs.rec_model_dir="/work/quang.domanh/scan-bill/src/weights/ocr/rec/ch/ch_PP-OCRv4_rec_infer"
+    serargs.image_dir="/work/quang.domanh/datasets/test_benmark_invoices"
 
+    ser_predictor = SerPredictor(serargs)
 
-ser_res, total_time = kie_ser_prediction(args=serargs, ser_systems=ser_predictor, keypoint_infer=bill_keypts_infer, save=True, draw=False)
+    for model_yolo in models_list_yolo:
 
-# print(total_time)
-print("benmark total: ", len(total_time))
-print("mean time: {} image/s".format(np.mean(total_time)))
-print("median time: {} image/s".format(np.median(total_time)))
-print("P99 time: {} image/s".format(np.percentile(total_time, 99)))
+        model_path = os.path.join(save_dir_model, model_yolo, f"fold_1", "train", "weights", "best.pt")
+        bill_keypts_infer = YOLO(model_path)  # load a pretrained model (recommended for training)
+
+        ser_res, total_time = kie_ser_prediction(args=serargs, ser_systems=ser_predictor, 
+                                                 keypoint_infer=bill_keypts_infer, save=True, draw=False)
+
+        with open("results-performance-test.txt", "a") as f:
+            f.write("{} x {} ".format(model_layout, model_yolo))
+            f.write("x benmark total image: {}".format(len(total_time)))
+            f.write("x mean time: {} s/image".format(np.mean(total_time)))
+            f.write("x median time: {} s/image".format(np.median(total_time)))
+            f.write("x P99 time: {} s/image \n".format(np.percentile(total_time, 99)))
+        
