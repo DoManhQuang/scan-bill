@@ -30,6 +30,8 @@ save_dir_model = "/work/quang.domanh/scan-bill/runs/keydet"
 source_dir = "/work/quang.domanh/datasets/bill_keypoint_landmarks/dataset"
 target_dir = "/work/quang.domanh/datasets/bill_keypoint_landmarks"
 
+with open("results-test-kfold.txt", "w") as f:
+    f.write(">>> START <<< \n")
 
 for model_name in models_list:
 
@@ -37,7 +39,7 @@ for model_name in models_list:
     scores95, score75, score50 = [], [], []
     keyscores95, keyscore75, keyscore50 = [], [], []
 
-    with open("results-test-kfold.txt", "w") as f:
+    with open("results-test-kfold.txt", "a") as f:
         f.write(">>> {} <<< \n". format(model_name))
 
     for i in range(0, 5):
@@ -94,3 +96,6 @@ for model_name in models_list:
         f.write("END TEST >>> {} <<< \n\n". format(model_name))
 
     print("END TEST >>> ", model_name, "<<< \n")
+
+with open("results-test-kfold.txt", "a") as f:
+    f.write(">>> END <<< \n")
